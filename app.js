@@ -20,10 +20,13 @@ app.use("/api", indexRoutes);
 
 const authRoutes = require("./routes/auth.routes");
 app.use("/auth", authRoutes);
+const { isAuthenticated } = require("./middleware/jwt.middleware");
 
 const categoryRoutes = require("./routes/category.routes");
-const { isAuthenticated } = require("./middleware/jwt.middleware");
 app.use("/api", isAuthenticated, categoryRoutes);
+
+const expenseRoutes = require("./routes/expense.routes");
+app.use("/api", isAuthenticated, expenseRoutes);
 
 // ❗ To handle errors. Routes that don't exist or errors that you handle in specific routes
 require("./error-handling")(app);
