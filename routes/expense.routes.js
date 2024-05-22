@@ -118,11 +118,20 @@ router.delete("/expenses/:expenseId", (req,res,next)=>{
     })
 })
 
+// POST Yearly Report for Specific User
 
-router.get('/expenses/total/:year', async (req, res) => {
-    const { year } = req.params;
+  router.post('/expenses/yearlyReport', async (req, res) => {
+    const { year } = req.body;
 
   try {
+
+    const userId = req.payload && req.payload._id;
+  
+    // Validate input
+    if (!userId || !year ) {
+      return res.status(400).json({ message: 'userId and year are required' });
+    }
+
     // Debug: Log the year parameter
     console.log(`Fetching expenses for the year: ${year}`);
 
@@ -136,6 +145,7 @@ router.get('/expenses/total/:year', async (req, res) => {
     const expenses = await Expense.aggregate([
       {
         $match: {
+        userId: new mongoose.Types.ObjectId(userId),  
           date: {
             $gte: startDate,
             $lt: endDate
@@ -176,29 +186,53 @@ router.get('/expenses/total/:year', async (req, res) => {
   }
   });
 
-  router.get('/expenses/:year/:month', async (req, res) => {
-    const { year, month } = req.params;
+//POST Monthly Report for specific User
+
+  router.post('/expenses/user/monthlyExpenses', async (req, res) => {
+    const { year, month } = req.body;
   
     try {
+      // Ensure that req.payload is populated by your authentication middleware
+      const userId = req.payload && req.payload._id;
+  
+      // Validate input
+      if (!userId || !year || !month) {
+        return res.status(400).json({ message: 'userId, year, and month are required' });
+      }
+  
       const startDate = new Date(year, month - 1, 1);
       const endDate = new Date(year, month, 1);
   
-      // Fetch expenses for the specified month and year
-      const expenses = await Expense.find({
-        date: {
-          $gte: startDate,
-          $lt: endDate
+      // Aggregate the total expenses for the specified user, month, and year
+      const expenses = await Expense.aggregate([
+        {
+          $match: {
+            userId: new mongoose.Types.ObjectId(userId),
+            date: {
+              $gte: startDate,
+              $lt: endDate
+            }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            totalAmount: { $sum: "$amount" },
+            expenses: { $push: "$$ROOT" }
+          }
         }
-      });
+      ]);
   
-      // Calculate the total expense amount
-      const totalAmount = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+      // If no expenses were found, set default values
+      const totalAmount = expenses.length > 0 ? expenses[0].totalAmount : 0;
+      const expenseDetails = expenses.length > 0 ? expenses[0].expenses : [];
   
-      res.status(200).json({ totalAmount, expenses });
+      res.status(200).json({ totalAmount, expenses: expenseDetails });
     } catch (error) {
       console.error('Error fetching expenses:', error);
       res.status(500).json({ message: 'Error fetching expenses', error });
     }
   });
+  
 
 module.exports = router;
