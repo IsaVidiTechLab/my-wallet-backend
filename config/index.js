@@ -22,11 +22,15 @@ module.exports = (app) => {
   app.set("trust proxy", 1);
 
   // controls a very specific header to pass headers from the frontend
-  app.use(
-    cors({
-      origin: [FRONTEND_URL],
-    })
-  );
+  app.use(cors());
+  app.use((req,res,next)=>{
+      res.header('Access-Control-Allow-Headers, *, Access-Control-Allow-Origin', 'Origin, X-Requested-with, Content_Type,Accept,Authorization',FRONTEND_URL);
+      if(req.method === 'OPTIONS') {
+          res.header('Access-Control-Allow-Methods','PUT,POST,PATCH,DELETE,GET');
+          return res.status(200).json({});
+      }
+      next();
+  });
 
   // In development environment the app logs
   app.use(logger("dev"));
